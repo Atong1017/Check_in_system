@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}個人資料{% endblock %}
+
+{% block content %}
+
+<div class="mb-4">
+  <h5 class="mb-0" style="font-weight:700;">個人資料</h5>
+  <div style="font-size:0.75rem; color:#7a7a9a;">帳號設定與密碼管理</div>
+</div>
+
+<!-- 帳號資訊（唯讀） -->
+<div class="card-dark mb-4">
+  <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:14px;
+              text-transform:uppercase; letter-spacing:0.5px;">帳號資訊</div>
+  <div class="d-flex gap-3">
+    <div style="width:50px; height:50px; border-radius:50%; background:rgba(124,111,255,0.15);
+                display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+      <i class="bi bi-person" style="color:#7c6fff; font-size:1.4rem;"></i>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:1rem; font-weight:700;">{{ user.get_full_name|default:user.username }}</div>
+      <div style="font-size:0.78rem; color:#7a7a9a; margin-top:2px;">
+        @{{ user.username }}
+        <span class="badge-role ms-2">{{ user.get_role_display }}</span>
+      </div>
+      {% if user.employee_code %}
+      <div style="font-size:0.75rem; color:#7a7a9a; margin-top:2px;">
+        <i class="bi bi-hash me-1"></i>員工編號：{{ user.employee_code }}
+      </div>
+      {% endif %}
+      {% if user.shop %}
+      <div style="font-size:0.75rem; color:#7a7a9a; margin-top:2px;">
+        <i class="bi bi-shop me-1"></i>{{ user.shop.name }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- 修改姓名 -->
+<div class="card-dark mb-4">
+  <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:14px;
+              text-transform:uppercase; letter-spacing:0.5px;">修改姓名</div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update_name">
+    <div class="mb-3">
+      <label class="form-label">顯示姓名</label>
+      <input type="text" name="first_name" class="form-control"
+             value="{{ user.first_name }}" placeholder="輸入你的姓名" required>
+      <div style="font-size:0.72rem; color:#7a7a9a; margin-top:4px;">此名稱會顯示在所有頁面上</div>
+    </div>
+    <button type="submit" class="btn-accent" style="font-size:0.9rem; padding:12px;">
+      <i class="bi bi-check2 me-2"></i>儲存姓名
+    </button>
+  </form>
+</div>
+
+<!-- 修改密碼 -->
+<div class="card-dark mb-4">
+  <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:14px;
+              text-transform:uppercase; letter-spacing:0.5px;">修改密碼</div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="change_password">
+    <div class="mb-3">
+      <label class="form-label">目前密碼</label>
+      <input type="password" name="current_password" class="form-control"
+             placeholder="輸入目前使用的密碼" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">新密碼</label>
+      <input type="password" name="new_password" class="form-control"
+             placeholder="至少 8 個字元" required minlength="8">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">確認新密碼</label>
+      <input type="password" name="confirm_password" class="form-control"
+             placeholder="再次輸入新密碼" required>
+    </div>
+    <button type="submit" class="btn-accent" style="font-size:0.9rem; padding:12px; background:#3dd68c;">
+      <i class="bi bi-shield-lock me-2"></i>更新密碼
+    </button>
+  </form>
+</div>
+
+{% endblock %}

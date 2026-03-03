@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}薪資管理 — {{ shop.name }}{% endblock %}
+{% block nav_agent %}active{% endblock %}
+
+{% block content %}
+
+<!-- 標題 -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div>
+    <div style="font-size:1.05rem; font-weight:700;">{{ shop.name }}</div>
+    <div style="font-size:0.75rem; color:#7a7a9a;">薪資調整管理</div>
+  </div>
+  <a href="{% url 'agent_monthly' %}?year={{ year }}&month={{ month }}"
+     class="btn btn-outline-light-custom px-3 py-1" style="font-size:0.8rem;">
+    <i class="bi bi-people me-1"></i>月報表
+  </a>
+</div>
+
+<!-- 月份導覽 -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <div class="text-center">
+    <div style="font-size:1.05rem; font-weight:700;">{{ year }} 年 {{ month }} 月</div>
+    {% if is_current_month %}<div style="font-size:0.72rem; color:#7c6fff;">本月</div>{% endif %}
+  </div>
+  <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- 統計卡片 -->
+<div class="d-flex gap-2 mb-4">
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.3rem; font-weight:700; color:#3dd68c;">+{{ total_add }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">薪資加項</div>
+  </div>
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.3rem; font-weight:700; color:#f87171;">-{{ total_deduct }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">扣項/損壞</div>
+  </div>
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.3rem; font-weight:700; color:#f0b429;">{{ records|length }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">筆記錄</div>
+  </div>
+</div>
+
+<!-- 員工篩選 -->
+<div class="mb-4">
+  <form method="get" class="d-flex gap-2 align-items-end">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <div class="flex-fill">
+      <label class="form-label">篩選員工</label>
+      <select name="employee_id" class="form-control" onchange="this.form.submit()">
+        <option value="">全部員工</option>
+        {% for emp in all_staff %}
+        <option value="{{ emp.id }}" {% if employee_id == emp.id|stringformat:"s" %}selected{% endif %}>
+          {% if emp.employee_code %}[{{ emp.employee_code }}] {% endif %}{{ emp.get_full_name|default:emp.username }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if employee_id %}
+    <a href="?year={{ year }}&month={{ month }}" class="btn btn-outline-light-custom px-3 py-2" style="font-size:0.8rem; white-space:nowrap;">
+      清除篩選
+    </a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- 記錄列表 -->
+<div class="mb-4">
+  <div style="font-size:0.78rem; color:#7a7a9a; font-weight:600; margin-bottom:8px;
+              text-transform:uppercase; letter-spacing:0.5px;">
+    調整記錄（{{ records|length }}）
+  </div>
+  {% for r in records %}
+  <div class="record-item mb-2">
+    <div class="d-flex justify-content-between align-items-start">
+      <div style="flex:1;">
+        <div class="d-flex align-items-center gap-2">
+          <div style="font-size:0.88rem; font-weight:600;">
+            {% if r.user.employee_code %}<span style="color:#7a7a9a; font-size:0.78rem;">[{{ r.user.employee_code }}]</span>{% endif %}
+            {{ r.user.get_full_name|default:r.user.username }}
+          </div>
+        </div>
+        <div style="font-size:0.75rem; color:#7a7a9a; margin-top:2px;">
+          {{ r.date|date:"m/d" }} ·
+          {% if r.type == 'salary_add' %}
+          <span style="color:#3dd68c;">{{ r.get_type_display }}</span>
+          {% else %}
+          <span style="color:#f87171;">{{ r.get_type_display }}</span>
+          {% endif %}
+        </div>
+        <div style="font-size:0.8rem; color:#7a7a9a; margin-top:2px;">{{ r.description }}</div>
+      </div>
+      <div class="d-flex align-items-center gap-2 ms-2">
+        <div style="font-size:1rem; font-weight:700;
+                    {% if r.type == 'salary_add' %}color:#3dd68c;{% else %}color:#f87171;{% endif %}">
+          {% if r.type == 'salary_add' %}+{% else %}-{% endif %}{{ r.amount }}
+        </div>
+        <form method="post" action="{% url 'mami_salary_delete' r.id %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm" style="background:transparent; border:none; color:#7a7a9a; padding:2px 6px;"
+                  onclick="return confirm('確認刪除此記錄？')">
+            <i class="bi bi-trash3" style="font-size:0.85rem;"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-center py-4" style="color:#7a7a9a;">
+    <i class="bi bi-inbox" style="font-size:2rem; opacity:0.3;"></i>
+    <div class="mt-2" style="font-size:0.9rem;">本月尚無薪資調整記錄</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 新增記錄 -->
+<div class="card-dark mb-4">
+  <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:14px;
+              text-transform:uppercase; letter-spacing:0.5px;">新增薪資調整</div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-2">
+      <label class="form-label">員工 *</label>
+      <select name="employee_id" class="form-control" required>
+        <option value="">— 選擇員工 —</option>
+        {% for emp in all_staff %}
+        <option value="{{ emp.id }}">
+          {% if emp.employee_code %}[{{ emp.employee_code }}] {% endif %}{{ emp.get_full_name|default:emp.username }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="d-flex gap-2 mb-2">
+      <div class="flex-fill">
+        <label class="form-label">類型 *</label>
+        <select name="type" class="form-control" required>
+          {% for val, label in entry_types %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-fill">
+        <label class="form-label">金額 *</label>
+        <input type="number" name="amount" class="form-control" placeholder="0" step="0.01" min="0" required>
+      </div>
+    </div>
+    <div class="mb-2">
+      <label class="form-label">說明 *</label>
+      <input type="text" name="description" class="form-control" placeholder="說明原因" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">日期</label>
+      <input type="date" name="date" class="form-control" value="{{ today }}">
+    </div>
+    <button type="submit" class="btn-accent" style="font-size:0.9rem; padding:12px;">
+      <i class="bi bi-plus-circle me-2"></i>新增記錄
+    </button>
+  </form>
+</div>
+
+{% endblock %}

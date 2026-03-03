@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}補簽詳情 — {{ shop.name }}{% endblock %}
+{% block nav_agent %}active{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="{% url 'agent_corrections' %}" style="color:#7a7a9a; text-decoration:none;">
+    <i class="bi bi-arrow-left" style="font-size:1.2rem;"></i>
+  </a>
+  <div>
+    <h5 class="mb-0" style="font-weight:700;">補簽詳情</h5>
+    <div style="font-size:0.75rem; color:#7a7a9a;">{{ shop.name }}</div>
+  </div>
+  <div class="ms-auto">
+    {% if att.status == 'pending_correction' %}
+    <span style="font-size:0.72rem; background:rgba(124,111,255,0.15); color:#7c6fff;
+                 border:1px solid rgba(124,111,255,0.3); border-radius:6px; padding:4px 10px;">
+      待審核
+    </span>
+    {% elif att.status == 'approved' %}
+    <span style="font-size:0.72rem; background:rgba(61,214,140,0.12); color:#3dd68c;
+                 border:1px solid rgba(61,214,140,0.3); border-radius:6px; padding:4px 10px;">
+      已核准
+    </span>
+    {% else %}
+    <span style="font-size:0.72rem; background:rgba(248,113,113,0.12); color:#f87171;
+                 border:1px solid rgba(248,113,113,0.3); border-radius:6px; padding:4px 10px;">
+      已拒絕
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 申請人資訊 -->
+<div class="card-dark mb-3">
+  <div class="d-flex align-items-center gap-3">
+    <div style="width:44px; height:44px; border-radius:50%; background:rgba(124,111,255,0.15);
+                display:flex; align-items:center; justify-content:center;">
+      <i class="bi bi-person" style="color:#7c6fff; font-size:1.2rem;"></i>
+    </div>
+    <div>
+      <div style="font-size:1rem; font-weight:700;">
+        {% if att.user.employee_code %}<span style="color:#7a7a9a; font-size:0.82rem;">[{{ att.user.employee_code }}]</span>{% endif %}
+        {{ att.user.get_full_name|default:att.user.username }}
+      </div>
+      <div style="font-size:0.75rem; color:#7a7a9a;">{{ att.correction_type_label }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- 時間資訊 -->
+<div class="card-dark mb-3">
+  <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:12px;
+              text-transform:uppercase; letter-spacing:0.5px;">申請內容</div>
+
+  <div class="d-flex gap-3">
+    <div class="flex-fill">
+      <div style="font-size:0.72rem; color:#7a7a9a; margin-bottom:3px;">上班時間</div>
+      <div style="font-size:1rem; font-weight:600; color:#e8e8f0;">
+        {{ att.clock_in|time:"H:i" }}
+      </div>
+      <div style="font-size:0.7rem; color:#7a7a9a;">{{ att.clock_in|date:"Y/m/d" }}</div>
+    </div>
+    <div class="flex-fill">
+      <div style="font-size:0.72rem; color:#7a7a9a; margin-bottom:3px;">下班時間</div>
+      {% if att.clock_out %}
+      <div style="font-size:1rem; font-weight:600; color:#e8e8f0;">
+        {{ att.clock_out|time:"H:i" }}
+      </div>
+      <div style="font-size:0.7rem; color:#7a7a9a;">{{ att.clock_out|date:"Y/m/d" }}</div>
+      {% else %}
+      <div style="font-size:0.85rem; color:#7a7a9a;">（待補打）</div>
+      {% endif %}
+    </div>
+    <div class="flex-fill">
+      <div style="font-size:0.72rem; color:#7a7a9a; margin-bottom:3px;">班次</div>
+      <div style="font-size:1rem; font-weight:600;">第 {{ att.work_segment }} 班</div>
+    </div>
+  </div>
+
+  {% if att.note %}
+  <div style="margin-top:14px; padding-top:12px; border-top:1px solid #2e2e3e;">
+    <div style="font-size:0.72rem; color:#7a7a9a; margin-bottom:4px;">補簽說明</div>
+    <div style="font-size:0.88rem; color:#e8e8f0;">{{ att.note }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- 佐証圖片 -->
+{% if att.proof %}
+<div class="card-dark mb-3">
+  <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:10px;
+              text-transform:uppercase; letter-spacing:0.5px;">佐証圖片</div>
+  <a href="{{ att.proof.url }}" target="_blank">
+    <img src="{{ att.proof.url }}" alt="佐証圖片"
+         style="width:100%; border-radius:8px; object-fit:cover; max-height:260px;">
+  </a>
+  <div style="font-size:0.72rem; color:#7a7a9a; margin-top:6px;">點擊圖片可放大查看</div>
+</div>
+{% else %}
+<div class="record-item mb-3" style="opacity:0.6;">
+  <div class="d-flex align-items-center gap-2" style="color:#7a7a9a; font-size:0.85rem;">
+    <i class="bi bi-image"></i>未上傳佐証圖片
+  </div>
+</div>
+{% endif %}
+
+<!-- 審核操作 -->
+{% if is_pending %}
+<form method="post" action="{% url 'agent_approve_correction' att.id %}">
+  {% csrf_token %}
+
+  <!-- 時間調整 -->
+  <div class="card-dark mb-3">
+    <div style="font-size:0.72rem; color:#7a7a9a; font-weight:600; margin-bottom:12px;
+                text-transform:uppercase; letter-spacing:0.5px;">核准後時間（可選）</div>
+    <div style="font-size:0.75rem; color:#7a7a9a; margin-bottom:10px;">
+      如需調整，填入後核准；留空則保留原申請時間。
+    </div>
+    <div class="d-flex gap-3">
+      <div class="flex-fill">
+        <label class="form-label">上班時間</label>
+        <input type="time" name="approved_clock_in" value="{{ att.clock_in|time:'H:i' }}"
+               class="form-control">
+      </div>
+      {% if att.clock_out %}
+      <div class="flex-fill">
+        <label class="form-label">下班時間</label>
+        <input type="time" name="approved_clock_out" value="{{ att.clock_out|time:'H:i' }}"
+               class="form-control">
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" name="action" value="approve" class="btn-accent flex-fill"
+            style="background:#3dd68c; font-size:0.95rem; padding:14px;">
+      <i class="bi bi-check2-circle me-2"></i>核准
+    </button>
+    <button type="submit" name="action" value="reject"
+            class="flex-fill" style="background:rgba(248,113,113,0.15); color:#f87171;
+            border:1px solid rgba(248,113,113,0.3); border-radius:12px; font-size:0.95rem;
+            padding:14px; font-weight:600;"
+            onclick="return confirm('確認拒絕此補簽申請？')">
+      <i class="bi bi-x-circle me-2"></i>拒絕
+    </button>
+  </div>
+</form>
+{% else %}
+<a href="{% url 'agent_corrections' %}" class="btn-accent d-block text-center text-decoration-none"
+   style="font-size:0.9rem; padding:14px;">
+  返回列表
+</a>
+{% endif %}
+
+{% endblock %}

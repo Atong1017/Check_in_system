@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}補簽審核 — {{ shop.name }}{% endblock %}
+{% block nav_agent %}active{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="{% url 'agent_daily' %}" style="color:#7a7a9a; text-decoration:none;">
+    <i class="bi bi-arrow-left" style="font-size:1.2rem;"></i>
+  </a>
+  <div>
+    <h5 class="mb-0" style="font-weight:700;">補簽審核</h5>
+    <div style="font-size:0.75rem; color:#7a7a9a;">{{ shop.name }}</div>
+  </div>
+  {% if pending %}
+  <span class="ms-auto" style="background:rgba(248,113,113,0.18); color:#f87171;
+              border:1px solid rgba(248,113,113,0.35); border-radius:20px;
+              font-size:0.78rem; font-weight:700; padding:3px 10px;">
+    待審 {{ pending|length }}
+  </span>
+  {% endif %}
+</div>
+
+<!-- ① 待審核 -->
+{% if pending %}
+<div class="mb-4">
+  <div style="font-size:0.78rem; color:#7a7a9a; font-weight:600; margin-bottom:8px;
+              text-transform:uppercase; letter-spacing:0.5px;">
+    待審核（{{ pending|length }}）
+  </div>
+  {% for att in pending %}
+  <a href="{% url 'agent_correction_detail' att.id %}" class="record-item mb-2 d-block text-decoration-none"
+     style="color:inherit; border-color:rgba(124,111,255,0.35);">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <div style="font-size:0.92rem; font-weight:600;">
+          {% if att.user.employee_code %}<span style="color:#7a7a9a; font-size:0.8rem;">[{{ att.user.employee_code }}]</span>{% endif %}
+          {{ att.user.get_full_name|default:att.user.username }}
+        </div>
+        <div style="font-size:0.75rem; color:#7a7a9a; margin-top:2px;">
+          {{ att.clock_in|date:"m/d" }}
+          · {{ att.correction_type_label }}
+        </div>
+        {% if att.note %}
+        <div style="font-size:0.75rem; color:#7a7a9a; margin-top:2px;">
+          <i class="bi bi-chat-left-text me-1"></i>{{ att.note|truncatechars:30 }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span style="font-size:0.72rem; background:rgba(124,111,255,0.15); color:#7c6fff;
+                     border:1px solid rgba(124,111,255,0.3); border-radius:6px; padding:3px 8px;">
+          待審核
+        </span>
+        <i class="bi bi-chevron-right" style="color:#7a7a9a;"></i>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-4 mb-4" style="color:#7a7a9a;">
+  <i class="bi bi-check2-all" style="font-size:2rem; color:#3dd68c; opacity:0.6;"></i>
+  <div class="mt-2" style="font-size:0.9rem;">目前沒有待審核的補簽申請</div>
+</div>
+{% endif %}
+
+<!-- ② 近期已處理 -->
+{% if resolved %}
+<div>
+  <div style="font-size:0.78rem; color:#7a7a9a; font-weight:600; margin-bottom:8px;
+              text-transform:uppercase; letter-spacing:0.5px;">
+    近 14 天已處理（{{ resolved|length }}）
+  </div>
+  {% for att in resolved %}
+  <a href="{% url 'agent_correction_detail' att.id %}" class="record-item mb-2 d-block text-decoration-none"
+     style="color:inherit; opacity:0.75;">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div style="font-size:0.9rem; font-weight:600;">
+          {% if att.user.employee_code %}<span style="color:#7a7a9a; font-size:0.78rem;">[{{ att.user.employee_code }}]</span>{% endif %}
+          {{ att.user.get_full_name|default:att.user.username }}
+        </div>
+        <div style="font-size:0.75rem; color:#7a7a9a;">
+          {{ att.clock_in|date:"m/d" }} · {{ att.correction_type_label }}
+        </div>
+      </div>
+      {% if att.status == 'approved' %}
+      <span style="font-size:0.72rem; background:rgba(61,214,140,0.12); color:#3dd68c;
+                   border:1px solid rgba(61,214,140,0.3); border-radius:6px; padding:3px 8px;">
+        已核准
+      </span>
+      {% else %}
+      <span style="font-size:0.72rem; background:rgba(248,113,113,0.12); color:#f87171;
+                   border:1px solid rgba(248,113,113,0.3); border-radius:6px; padding:3px 8px;">
+        已拒絕
+      </span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

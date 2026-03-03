@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}打卡 — 時間日誌{% endblock %}
+{% block nav_clock %}active{% endblock %}
+
+{% block content %}
+
+<!-- 時鐘顯示 -->
+<div class="text-center mb-4">
+  <div id="live-time" style="font-size: 3rem; font-weight: 700; color: #e8e8f0; letter-spacing: 2px; font-variant-numeric: tabular-nums;">
+    {{ now|time:"H:i:s" }}
+  </div>
+  <div style="color: #7a7a9a; font-size: 0.9rem;">
+    {{ today|date:"Y 年 m 月 d 日" }}（{{ today|date:"D" }}）
+  </div>
+  {% if user.shop %}
+  <div style="color: #7a7a9a; font-size: 0.8rem; margin-top: 2px;">
+    <i class="bi bi-shop me-1"></i>{{ user.shop.name }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- 狀態卡片 -->
+{% if open_attendance %}
+<!-- 上班中 -->
+<div class="card-dark mb-4">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <span class="status-dot dot-success" style="width:10px;height:10px;box-shadow:0 0 6px #3dd68c;"></span>
+    <span style="font-weight: 600; font-size: 1rem; color: #3dd68c;">上班中</span>
+    <span class="ms-auto badge-role">第 {{ open_attendance.work_segment }} 班</span>
+  </div>
+  <div class="d-flex justify-content-between">
+    <div>
+      <div style="font-size: 0.75rem; color: #7a7a9a;">上班時間</div>
+      <div style="font-size: 1.1rem; font-weight: 600;">{{ open_attendance.clock_in|time:"H:i" }}</div>
+    </div>
+    <div class="text-center">
+      <div style="font-size: 0.75rem; color: #7a7a9a;">已工作</div>
+      <div id="working-duration" style="font-size: 1.1rem; font-weight: 600; color: #7c6fff;">
+        {{ working_duration }}
+      </div>
+    </div>
+    <div class="text-end">
+      <div style="font-size: 0.75rem; color: #7a7a9a;">預計工時</div>
+      <div style="font-size: 1.1rem; font-weight: 600;">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- 下班打卡按鈕 -->
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="clock_out">
+  <button type="submit" class="btn-accent" style="background: #3dd68c; font-size: 1.15rem; padding: 16px;">
+    <i class="bi bi-box-arrow-right me-2"></i>下班打卡
+  </button>
+</form>
+
+{% else %}
+<!-- 未上班 -->
+<div class="card-dark mb-4" style="border-style: dashed; border-color: #3e3e55;">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span class="status-dot dot-muted" style="width:10px;height:10px;"></span>
+    <span style="font-weight: 600; font-size: 1rem; color: #7a7a9a;">尚未上班</span>
+  </div>
+  <div style="font-size: 0.82rem; color: #555570;">點擊下方按鈕開始計時</div>
+</div>
+
+<!-- 班次選擇 + 上班打卡按鈕 -->
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="clock_in">
+  <div class="mb-3">
+    <label class="form-label">選擇班次</label>
+    <div class="d-flex gap-2">
+      <label class="flex-fill">
+        <input type="radio" name="segment" value="1" class="d-none segment-radio" checked>
+        <div class="segment-btn card-dark text-center py-3" style="cursor:pointer; border-radius:12px;">
+          <div style="font-size: 1.1rem; font-weight: 600;">第一班</div>
+        </div>
+      </label>
+      <label class="flex-fill">
+        <input type="radio" name="segment" value="2" class="d-none segment-radio">
+        <div class="segment-btn card-dark text-center py-3" style="cursor:pointer; border-radius:12px;">
+          <div style="font-size: 1.1rem; font-weight: 600;">第二班</div>
+        </div>
+      </label>
+    </div>
+  </div>
+  <button type="submit" class="btn-accent" style="font-size: 1.15rem; padding: 16px;">
+    <i class="bi bi-box-arrow-in-right me-2"></i>上班打卡
+  </button>
+</form>
+{% endif %}
+
+<!-- 今日其他記錄 -->
+{% if user.attendances.all %}
+{% with today_records=user.attendances.all %}
+  {% if today_records %}
+  <div class="mt-4">
+    <div style="font-size: 0.8rem; color: #7a7a9a; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">今日記錄</div>
+    {% for att in user.attendances.all|slice:":5" %}
+      {% if att.clock_in.date == today %}
+      <div class="record-item d-flex align-items-center justify-content-between">
+        <div>
+          <span class="status-dot
+            {% if att.status == 'normal' %}dot-success
+            {% elif att.status == 'pending_correction' %}dot-warning
+            {% elif att.status == 'approved' %}dot-success
+            {% else %}dot-danger{% endif %}
+            me-2"></span>
+          <span style="font-size: 0.9rem;">{{ att.clock_in|time:"H:i" }} →
+            {% if att.clock_out %}{{ att.clock_out|time:"H:i" }}{% else %}進行中{% endif %}
+          </span>
+        </div>
+        <div style="font-size: 0.82rem; color: #7a7a9a;">
+          {% if att.duration_hours %}{{ att.duration_hours }}h{% endif %}
+          <span class="badge-role ms-1">第{{ att.work_segment }}班</span>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // 即時時鐘
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('live-time').textContent = `${h}:${m}:${s}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  {% if open_attendance %}
+  // 計算已工作時間
+  const clockInTime = new Date("{{ open_attendance.clock_in|date:'c' }}");
+  function updateDuration() {
+    const now = new Date();
+    const diff = Math.floor((now - clockInTime) / 1000);
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    document.getElementById('working-duration').textContent = `${h} 時 ${String(m).padStart(2,'0')} 分`;
+  }
+  setInterval(updateDuration, 60000);
+  updateDuration();
+  {% endif %}
+
+  // 班次選擇 UI
+  document.querySelectorAll('.segment-radio').forEach(radio => {
+    radio.addEventListener('change', function() {
+      document.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.style.borderColor = '#2e2e3e';
+        btn.style.color = '#e8e8f0';
+      });
+      if (this.checked) {
+        this.nextElementSibling.style.borderColor = '#7c6fff';
+        this.nextElementSibling.style.color = '#7c6fff';
+      }
+    });
+    // 初始狀態
+    if (radio.checked) {
+      radio.nextElementSibling.style.borderColor = '#7c6fff';
+      radio.nextElementSibling.style.color = '#7c6fff';
+    }
+  });
+</script>
+{% endblock %}

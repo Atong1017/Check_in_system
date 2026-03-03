@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}我的日誌 — 時間日誌{% endblock %}
+{% block nav_journal %}active{% endblock %}
+
+{% block content %}
+
+<!-- 月份導覽 -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <a href="?year={{ prev_year }}&month={{ prev_month }}"
+     class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <div class="text-center">
+    <div style="font-size: 1.15rem; font-weight: 700;">{{ year }} 年 {{ month }} 月</div>
+    {% if is_current_month %}
+    <div style="font-size: 0.75rem; color: #7c6fff;">本月</div>
+    {% endif %}
+  </div>
+  <a href="?year={{ next_year }}&month={{ next_month }}"
+     class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- 統計卡片 -->
+<div class="d-flex gap-2 mb-4">
+  <div class="card-dark flex-fill text-center">
+    <div style="font-size: 1.8rem; font-weight: 700; color: #7c6fff;">{{ total_days }}</div>
+    <div style="font-size: 0.78rem; color: #7a7a9a;">上班天數</div>
+  </div>
+  <div class="card-dark flex-fill text-center">
+    <div style="font-size: 1.8rem; font-weight: 700; color: #3dd68c;">{{ total_hours }}</div>
+    <div style="font-size: 0.78rem; color: #7a7a9a;">總工時 (h)</div>
+  </div>
+  <div class="card-dark flex-fill text-center">
+    <div style="font-size: 1.8rem; font-weight: 700;
+      color: {% if missing_clockout or pending_corrections %}#f0b429{% else %}#7a7a9a{% endif %};">
+      {{ missing_clockout|length|add:pending_corrections|length }}
+    </div>
+    <div style="font-size: 0.78rem; color: #7a7a9a;">待處理</div>
+  </div>
+</div>
+
+<!-- 警示區塊 -->
+{% if missing_clockout %}
+<div class="mb-3">
+  <div style="font-size: 0.78rem; color: #f0b429; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+    <i class="bi bi-exclamation-triangle me-1"></i>忘打下班卡 ({{ missing_clockout|length }})
+  </div>
+  {% for att in missing_clockout %}
+  <div class="record-item d-flex align-items-center justify-content-between"
+       style="border-color: rgba(240,180,41,0.3);">
+    <div>
+      <div style="font-size: 0.82rem; color: #7a7a9a;">{{ att.clock_in|date:"m/d" }}</div>
+      <div style="font-size: 0.95rem; font-weight: 600;">上班 {{ att.clock_in|time:"H:i" }} → <span style="color:#f0b429;">未打下班</span></div>
+    </div>
+    <a href="{% url 'correction_create' %}?type=missed_out&date={{ att.clock_in|date:'Y-m-d' }}"
+       class="btn btn-sm" style="background:rgba(240,180,41,0.15); color:#f0b429; border-radius:8px; font-size:0.78rem; padding:4px 10px;">
+      補簽
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if pending_corrections %}
+<div class="mb-3">
+  <div style="font-size: 0.78rem; color: #7c6fff; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+    <i class="bi bi-hourglass-split me-1"></i>待審核補簽 ({{ pending_corrections|length }})
+  </div>
+  {% for att in pending_corrections %}
+  <div class="record-item" style="border-color: rgba(124,111,255,0.3);">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div style="font-size: 0.82rem; color: #7a7a9a;">{{ att.clock_in|date:"m/d" }}</div>
+        <div style="font-size: 0.92rem;">
+          {{ att.clock_in|time:"H:i" }}
+          {% if att.clock_out %} → {{ att.clock_out|time:"H:i" }}{% endif %}
+        </div>
+      </div>
+      <span style="font-size:0.75rem; background:rgba(124,111,255,0.15); color:#7c6fff; border-radius:6px; padding:3px 8px;">
+        審核中
+      </span>
+    </div>
+    {% if att.note %}
+    <div style="font-size: 0.78rem; color: #7a7a9a; margin-top: 6px;">
+      <i class="bi bi-chat-left-text me-1"></i>{{ att.note|truncatechars:50 }}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- 本月出勤記錄 -->
+<div style="font-size: 0.78rem; color: #7a7a9a; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+  出勤記錄
+</div>
+
+{% if attendances %}
+  {% regroup attendances by clock_in|date:"m/d" as day_records %}
+  {% for day in day_records %}
+  <div style="margin-bottom: 14px;">
+    <div style="font-size: 0.78rem; color: #7a7a9a; padding-left: 2px; margin-bottom: 4px;">
+      {{ year }}/{{ day.grouper }}
+    </div>
+    {% for att in day.list %}
+    <div class="record-item">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <span class="status-dot
+            {% if att.status == 'normal' and att.clock_out %}dot-success
+            {% elif att.status == 'normal' and not att.clock_out %}dot-warning
+            {% elif att.status == 'approved' %}dot-success
+            {% elif att.status == 'pending_correction' %}dot-warning
+            {% else %}dot-danger{% endif %}
+          "></span>
+          <div>
+            <div style="font-size: 0.92rem; font-weight: 500;">
+              {{ att.clock_in|time:"H:i" }}
+              →
+              {% if att.clock_out %}
+                {{ att.clock_out|time:"H:i" }}
+              {% else %}
+                <span style="color:#f0b429;">未打下班</span>
+              {% endif %}
+            </div>
+            <div style="font-size: 0.75rem; color: #7a7a9a;">第 {{ att.work_segment }} 班</div>
+          </div>
+        </div>
+        <div class="text-end">
+          {% if att.duration_hours %}
+          <div style="font-size: 0.95rem; font-weight: 600; color: #3dd68c;">{{ att.duration_hours }}h</div>
+          {% endif %}
+          <div style="font-size: 0.72rem; color: #7a7a9a;">
+            {% if att.status == 'normal' %}正常
+            {% elif att.status == 'pending_correction' %}審核中
+            {% elif att.status == 'approved' %}已核准
+            {% elif att.status == 'rejected' %}已拒絕
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="text-center py-5" style="color: #7a7a9a;">
+    <i class="bi bi-calendar-x" style="font-size: 2.5rem; opacity: 0.4;"></i>
+    <div class="mt-2" style="font-size: 0.9rem;">本月尚無出勤記錄</div>
+  </div>
+{% endif %}
+
+<!-- 申請補簽按鈕 -->
+<div class="mt-4">
+  <a href="{% url 'correction_create' %}" class="btn-accent d-block text-center text-decoration-none"
+     style="font-size: 0.95rem; padding: 13px; background: rgba(124,111,255,0.15); color: #7c6fff; border: 1px solid rgba(124,111,255,0.3);">
+    <i class="bi bi-pen me-2"></i>申請補簽
+  </a>
+</div>
+
+{% endblock %}

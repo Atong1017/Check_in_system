@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}申請補簽 — 時間日誌{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="{% url 'journal' %}" style="color: #7a7a9a; text-decoration: none;">
+    <i class="bi bi-arrow-left" style="font-size: 1.2rem;"></i>
+  </a>
+  <h5 class="mb-0" style="font-weight: 700;">申請補簽</h5>
+</div>
+
+<div class="alert-dark-info px-3 py-2 mb-4" style="font-size: 0.82rem;">
+  <i class="bi bi-info-circle me-1"></i>
+  補簽申請送出後，將由您的經紀人審核。審核通過後才會計入工時。
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <!-- 補簽類型 -->
+  <div class="mb-4">
+    <div class="form-label mb-2">補簽類型</div>
+    <div class="d-flex gap-2">
+      {% for radio in form.correction_type %}
+      <label class="flex-fill" style="cursor: pointer;">
+        {{ radio.tag }}
+        <div class="card-dark text-center py-3 correction-type-btn"
+             style="border-radius: 12px; cursor: pointer;
+             {% if radio.data.value == 'missed_in' %}border-color: #7c6fff; color: #7c6fff;{% endif %}">
+          <i class="bi {% if radio.data.value == 'missed_in' %}bi-box-arrow-in-right{% else %}bi-box-arrow-right{% endif %}"
+             style="font-size: 1.3rem;"></i>
+          <div style="font-size: 0.85rem; margin-top: 4px; font-weight: 600;">{{ radio.choice_label }}</div>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+    {% if form.correction_type.errors %}
+    <div style="color: #f87171; font-size: 0.8rem; margin-top: 4px;">{{ form.correction_type.errors.0 }}</div>
+    {% endif %}
+  </div>
+
+  <!-- 日期 -->
+  <div class="mb-3">
+    <label class="form-label">{{ form.date.label }}</label>
+    {{ form.date }}
+    {% if form.date.errors %}
+    <div style="color: #f87171; font-size: 0.8rem; margin-top: 4px;">{{ form.date.errors.0 }}</div>
+    {% endif %}
+  </div>
+
+  <!-- 時間 -->
+  <div class="mb-3">
+    <label class="form-label">{{ form.time.label }}</label>
+    {{ form.time }}
+    {% if form.time.errors %}
+    <div style="color: #f87171; font-size: 0.8rem; margin-top: 4px;">{{ form.time.errors.0 }}</div>
+    {% endif %}
+  </div>
+
+  <!-- 說明 -->
+  <div class="mb-3">
+    <label class="form-label">{{ form.note.label }}</label>
+    {{ form.note }}
+    {% if form.note.errors %}
+    <div style="color: #f87171; font-size: 0.8rem; margin-top: 4px;">{{ form.note.errors.0 }}</div>
+    {% endif %}
+  </div>
+
+  <!-- 證明圖片 -->
+  <div class="mb-4">
+    <label class="form-label">{{ form.proof.label }}</label>
+    <div style="font-size: 0.75rem; color: #7a7a9a; margin-bottom: 6px;">{{ form.proof.help_text }}</div>
+    {{ form.proof }}
+    {% if form.proof.errors %}
+    <div style="color: #f87171; font-size: 0.8rem; margin-top: 4px;">{{ form.proof.errors.0 }}</div>
+    {% endif %}
+  </div>
+
+  <button type="submit" class="btn-accent">
+    <i class="bi bi-send me-2"></i>送出申請
+  </button>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // 補簽類型選擇 UI
+  const radios = document.querySelectorAll('input[name="correction_type"]');
+  const btns = document.querySelectorAll('.correction-type-btn');
+
+  function updateTypeUI() {
+    radios.forEach((radio, i) => {
+      if (radio.checked) {
+        btns[i].style.borderColor = '#7c6fff';
+        btns[i].style.color = '#7c6fff';
+      } else {
+        btns[i].style.borderColor = '#2e2e3e';
+        btns[i].style.color = '#e8e8f0';
+      }
+    });
+  }
+
+  radios.forEach(radio => {
+    radio.style.display = 'none';
+    radio.addEventListener('change', updateTypeUI);
+  });
+  updateTypeUI();
+
+  // 從日誌頁帶入 type 預設值
+  const params = new URLSearchParams(window.location.search);
+  const typeParam = params.get('type');
+  if (typeParam) {
+    radios.forEach(radio => {
+      if (radio.value === typeParam) {
+        radio.checked = true;
+      }
+    });
+    updateTypeUI();
+  }
+
+  // 從日誌頁帶入日期
+  const dateParam = params.get('date');
+  if (dateParam) {
+    const dateInput = document.querySelector('input[name="date"]');
+    if (dateInput) dateInput.value = dateParam;
+  }
+</script>
+{% endblock %}

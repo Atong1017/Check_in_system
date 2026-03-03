@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}每日管理 — {{ shop.name }}{% endblock %}
+{% block nav_agent %}active{% endblock %}
+
+{% block content %}
+
+<!-- 標題列 + 日期導覽 -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div>
+    <div style="font-size:1.05rem; font-weight:700;">{{ shop.name }}</div>
+    <div style="font-size:0.75rem; color:#7a7a9a;">每日員工管理</div>
+  </div>
+  <a href="{% url 'agent_monthly' %}?year={{ view_date.year }}&month={{ view_date.month }}"
+     class="btn btn-outline-light-custom px-3 py-1" style="font-size:0.8rem;">
+    <i class="bi bi-calendar3 me-1"></i>月報表
+  </a>
+</div>
+
+<!-- 日期選擇 -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <a href="?date={{ prev_date }}" class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <div class="text-center">
+    <div style="font-size:1.05rem; font-weight:700;">
+      {{ view_date|date:"m 月 d 日" }}（{{ view_date|date:"D" }}）
+    </div>
+    {% if is_today %}<div style="font-size:0.72rem; color:#7c6fff;">今天</div>{% endif %}
+  </div>
+  <a href="?date={{ next_date }}" class="btn btn-outline-light-custom px-3 py-2"
+     {% if not is_today %}{% else %}style="opacity:0.4; pointer-events:none;"{% endif %}>
+    <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- 統計卡片 -->
+<div class="d-flex gap-2 mb-4">
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.5rem; font-weight:700; color:#7c6fff;">{{ working_count }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">上班中</div>
+  </div>
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.5rem; font-weight:700; color:#3dd68c;">{{ active_count }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">工作區域</div>
+  </div>
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.5rem; font-weight:700; color:#f0b429;">{{ idle_count }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">閒置</div>
+  </div>
+  <div class="card-dark flex-fill text-center py-2">
+    <div style="font-size:1.5rem; font-weight:700; color:#f87171;">{{ absent_count }}</div>
+    <div style="font-size:0.7rem; color:#7a7a9a;">未上班</div>
+  </div>
+</div>
+
+<!-- ① 工作區域 -->
+{% if active_sessions %}
+<div class="mb-4">
+  <div class="section-header">
+    <span class="status-dot dot-success me-1" style="width:8px;height:8px;box-shadow:0 0 5px #3dd68c;"></span>
+    工作區域（{{ active_count }}）
+  </div>
+  {% for sess in active_sessions %}
+  <div class="record-item">
+    <div class="d-flex align-items-start justify-content-between">
+      <div>
+        <div style="font-size:0.82rem; color:#3dd68c; font-weight:600;">{{ sess.table.name }}</div>
+        <div style="font-size:0.95rem; font-weight:600;">
+          {% if sess.user.employee_code %}[{{ sess.user.employee_code }}]{% endif %}
+          {{ sess.user.get_full_name|default:sess.user.username }}
+        </div>
+        <div style="font-size:0.78rem; color:#7a7a9a;">
+          開始 {{ sess.start_time|time:"H:i" }}
+          <span class="ms-2" style="color:#7c6fff;" id="dur-{{ sess.id }}">{{ sess.duration_str }}</span>
+        </div>
+      </div>
+      <!-- 放工 form -->
+      <form method="post" action="{% url 'agent_end_session' sess.id %}" class="d-flex align-items-center gap-1">
+        {% csrf_token %}
+        <input type="time" name="end_time" value="{{ now|time:'H:i' }}"
+               style="background:#22222f; border:1px solid #3e3e55; color:#e8e8f0; border-radius:8px; padding:4px 8px; font-size:0.78rem; width:90px;">
+        <button type="submit" class="btn btn-sm"
+                style="background:rgba(61,214,140,0.15); color:#3dd68c; border:1px solid rgba(61,214,140,0.3); border-radius:8px; font-size:0.78rem; padding:5px 10px;">
+          放工
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ② 閒置 (上班中但不在桌次) -->
+{% if idle_atts %}
+<div class="mb-4">
+  <div class="section-header">
+    <span class="status-dot dot-warning me-1"></span>
+    閒置（{{ idle_count }}）
+  </div>
+  {% for att in idle_atts %}
+  <div class="record-item">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <div style="font-size:0.95rem; font-weight:600;">
+          {% if att.user.employee_code %}[{{ att.user.employee_code }}]{% endif %}
+          {{ att.user.get_full_name|default:att.user.username }}
+        </div>
+        <div style="font-size:0.78rem; color:#7a7a9a;">
+          上班 {{ att.clock_in|time:"H:i" }}
+          <span class="ms-1">{{ att.duration_str }}</span>
+          <span class="badge-role ms-1">第{{ att.work_segment }}班</span>
+        </div>
+      </div>
+      <div class="d-flex gap-1">
+        <a href="{% url 'agent_assign_table' %}?employee_id={{ att.user.id }}"
+           class="btn btn-sm" style="background:rgba(124,111,255,0.15); color:#7c6fff; border:1px solid rgba(124,111,255,0.3); border-radius:8px; font-size:0.75rem; padding:5px 8px;">
+          安排桌次
+        </a>
+        <form method="post" action="{% url 'agent_clock_employee' %}" class="d-inline">
+          {% csrf_token %}
+          <input type="hidden" name="employee_id" value="{{ att.user.id }}">
+          <input type="hidden" name="action" value="clock_out">
+          <button type="submit" class="btn btn-sm"
+                  style="background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.3); border-radius:8px; font-size:0.75rem; padding:5px 8px;"
+                  onclick="return confirm('強制下班 {{ att.user.get_full_name|default:att.user.username }}？')">
+            強制下班
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ③ 未上班 -->
+{% if not_clocked_in %}
+<div class="mb-4">
+  <div class="section-header">
+    <span class="status-dot dot-danger me-1"></span>
+    未上班（{{ absent_count }}）
+  </div>
+  {% for emp in not_clocked_in %}
+  <div class="record-item">
+    <div class="d-flex align-items-center justify-content-between">
+      <div style="font-size:0.95rem;">
+        {% if emp.employee_code %}[{{ emp.employee_code }}]{% endif %}
+        {{ emp.get_full_name|default:emp.username }}
+      </div>
+      <!-- 代打上班卡 -->
+      <form method="post" action="{% url 'agent_clock_employee' %}" class="d-flex align-items-center gap-1">
+        {% csrf_token %}
+        <input type="hidden" name="employee_id" value="{{ emp.id }}">
+        <input type="hidden" name="action" value="clock_in">
+        <select name="segment" style="background:#22222f; border:1px solid #3e3e55; color:#e8e8f0; border-radius:8px; padding:4px 6px; font-size:0.75rem;">
+          <option value="1">第一班</option>
+          <option value="2">第二班</option>
+        </select>
+        <input type="time" name="clock_time" value="{{ now|time:'H:i' }}"
+               style="background:#22222f; border:1px solid #3e3e55; color:#e8e8f0; border-radius:8px; padding:4px 8px; font-size:0.78rem; width:90px;">
+        <button type="submit" class="btn btn-sm"
+                style="background:rgba(124,111,255,0.15); color:#7c6fff; border:1px solid rgba(124,111,255,0.3); border-radius:8px; font-size:0.75rem; padding:5px 8px;">
+          打卡
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ④ 待審核補簽 -->
+{% with pending=working_atts|length %}
+{% endwith %}
+{% comment %}查找今日待審核{% endcomment %}
+{% with pending_today=working_atts %}
+{% endwith %}
+
+<!-- ⑤ 已完成桌次 -->
+{% if completed_sessions %}
+<div class="mb-4">
+  <div class="section-header" style="color:#7a7a9a;">
+    <i class="bi bi-check2-all me-1"></i>已完成桌次（{{ completed_sessions|length }}）
+  </div>
+  {% for sess in completed_sessions %}
+  <div class="record-item" style="opacity:0.75;">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div style="font-size:0.82rem; color:#7a7a9a; font-weight:600;">{{ sess.table.name }}</div>
+        <div style="font-size:0.88rem;">
+          {% if sess.user.employee_code %}[{{ sess.user.employee_code }}]{% endif %}
+          {{ sess.user.get_full_name|default:sess.user.username }}
+        </div>
+      </div>
+      <div class="text-end" style="font-size:0.78rem; color:#7a7a9a;">
+        <div>{{ sess.start_time|time:"H:i" }} → {{ sess.end_time|time:"H:i" }}</div>
+        <div style="color:#3dd68c;">{{ sess.duration_str }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not working_atts and not not_clocked_in and not completed_sessions %}
+<div class="text-center py-5" style="color:#7a7a9a;">
+  <i class="bi bi-moon-stars" style="font-size:2.5rem; opacity:0.3;"></i>
+  <div class="mt-2" style="font-size:0.9rem;">今日尚無出勤資料</div>
+</div>
+{% endif %}
+
+<!-- ⑥ 待審核補簽 -->
+<div class="mt-3">
+  <a href="{% url 'agent_corrections' %}" class="record-item d-flex justify-content-between align-items-center text-decoration-none"
+     style="color:inherit;">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-pencil-square" style="color:#7c6fff; font-size:1.1rem;"></i>
+      <div>
+        <div style="font-size:0.9rem; font-weight:600;">補簽審核</div>
+        <div style="font-size:0.72rem; color:#7a7a9a;">查看所有補卡申請</div>
+      </div>
+    </div>
+    {% if pending_count %}
+    <span style="background:rgba(248,113,113,0.18); color:#f87171; border:1px solid rgba(248,113,113,0.35);
+                 border-radius:20px; font-size:0.78rem; font-weight:700; padding:3px 10px;">
+      待審 {{ pending_count }}
+    </span>
+    {% else %}
+    <i class="bi bi-chevron-right" style="color:#7a7a9a;"></i>
+    {% endif %}
+  </a>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  .section-header {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #7a7a9a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    padding-left: 2px;
+  }
+</style>
+<script>
+  // 即時更新工作區域時間 (每分鐘)
+  {% for sess in active_sessions %}
+  (function() {
+    const startTime = new Date("{{ sess.start_time|date:'c' }}");
+    function update() {
+      const diff = Math.floor((new Date() - startTime) / 1000);
+      const h = Math.floor(diff / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      const el = document.getElementById('dur-{{ sess.id }}');
+      if (el) el.textContent = h + 'h' + String(m).padStart(2,'0') + 'm';
+    }
+    setInterval(update, 60000);
+    update();
+  })();
+  {% endfor %}
+</script>
+{% endblock %}

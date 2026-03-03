@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}月報表 — {{ shop.name }}{% endblock %}
+{% block nav_agent %}active{% endblock %}
+
+{% block content %}
+
+<!-- 標題 -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div>
+    <div style="font-size:1.05rem; font-weight:700;">{{ shop.name }}</div>
+    <div style="font-size:0.75rem; color:#7a7a9a;">月員工管理</div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if user.role == 'mami' or user.role == 'admin' or user.is_superuser %}
+    <a href="{% url 'mami_salary' %}?year={{ year }}&month={{ month }}"
+       class="btn btn-outline-light-custom px-3 py-1" style="font-size:0.8rem;">
+      <i class="bi bi-cash-stack me-1"></i>薪資
+    </a>
+    {% endif %}
+    <a href="{% url 'agent_daily' %}" class="btn btn-outline-light-custom px-3 py-1" style="font-size:0.8rem;">
+      <i class="bi bi-calendar-day me-1"></i>每日
+    </a>
+  </div>
+</div>
+
+<!-- 月份導覽 -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-left"></i>
+  </a>
+  <div class="text-center">
+    <div style="font-size:1.1rem; font-weight:700;">{{ year }} 年 {{ month }} 月</div>
+    {% if is_current_month %}<div style="font-size:0.72rem; color:#7c6fff;">本月</div>{% endif %}
+  </div>
+  <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-outline-light-custom px-3 py-2">
+    <i class="bi bi-chevron-right"></i>
+  </a>
+</div>
+
+<!-- 員工列表 -->
+<div style="font-size:0.78rem; color:#7a7a9a; font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+  員工列表（{{ staff_stats|length }} 人）
+</div>
+
+{% for stat in staff_stats %}
+<div class="record-item mb-2" style="{% if stat.anomaly %}border-color:rgba(248,113,113,0.4);{% endif %}">
+  <div class="d-flex align-items-start justify-content-between mb-2">
+    <div>
+      <div style="font-size:0.95rem; font-weight:600;">
+        {% if stat.user.employee_code %}
+        <span style="color:#7a7a9a; font-size:0.82rem;">[{{ stat.user.employee_code }}]</span>
+        {% endif %}
+        {% if user.role == 'mami' or user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'mami_employee_detail' stat.user.id %}?year={{ year }}&month={{ month }}"
+           style="color:inherit; text-decoration:none;">
+          {{ stat.user.get_full_name|default:stat.user.username }}
+          <i class="bi bi-chevron-right" style="font-size:0.7rem; color:#7a7a9a;"></i>
+        </a>
+        {% else %}
+        {{ stat.user.get_full_name|default:stat.user.username }}
+        {% endif %}
+      </div>
+      {% if stat.work_mode %}
+      <div style="font-size:0.72rem; color:#7a7a9a;">
+        <i class="bi bi-clock me-1"></i>{{ stat.work_mode.name }}（{{ stat.work_mode.get_period_type_display }} / {{ stat.work_mode.total_hours }}h）
+      </div>
+      {% endif %}
+    </div>
+    {% if stat.anomaly %}
+    <span style="font-size:0.72rem; background:rgba(248,113,113,0.15); color:#f87171; border:1px solid rgba(248,113,113,0.3); border-radius:6px; padding:3px 8px;">
+      <i class="bi bi-exclamation-triangle me-1"></i>時數不足
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="d-flex gap-2" style="flex-wrap:wrap;">
+    <div class="text-center" style="min-width:60px;">
+      <div style="font-size:1.15rem; font-weight:700; color:#7c6fff;">{{ stat.work_days }}</div>
+      <div style="font-size:0.7rem; color:#7a7a9a;">上班天</div>
+    </div>
+    <div class="text-center" style="min-width:60px;">
+      <div style="font-size:1.15rem; font-weight:700; color:#3dd68c;">
+        {{ stat.total_hours }}
+        {% if stat.expected_hours %}
+        <span style="font-size:0.7rem; color:#7a7a9a;">/ {{ stat.expected_hours }}h</span>
+        {% endif %}
+      </div>
+      <div style="font-size:0.7rem; color:#7a7a9a;">工時 (h)</div>
+    </div>
+    <div class="text-center" style="min-width:60px;">
+      <div style="font-size:1.15rem; font-weight:700; color:#f0b429;">{{ stat.table_count }}</div>
+      <div style="font-size:0.7rem; color:#7a7a9a;">桌次次數</div>
+    </div>
+    <div class="text-center" style="min-width:60px;">
+      <div style="font-size:1.15rem; font-weight:700; color:#f0b429;">{{ stat.table_hours }}</div>
+      <div style="font-size:0.7rem; color:#7a7a9a;">桌次工時</div>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="text-center py-4" style="color:#7a7a9a;">
+  <i class="bi bi-people" style="font-size:2rem; opacity:0.3;"></i>
+  <div class="mt-2" style="font-size:0.9rem;">目前沒有員工</div>
+</div>
+{% endfor %}
+
+<!-- 上班模式 -->
+<div class="mt-4">
+  <div style="font-size:0.78rem; color:#7a7a9a; font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+    上班模式設定
+  </div>
+  {% for mode in work_modes %}
+  <div class="record-item mb-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div style="font-size:0.9rem; font-weight:600;">{{ mode.name }}</div>
+        <div style="font-size:0.75rem; color:#7a7a9a;">
+          {{ mode.get_period_type_display }} · {{ mode.total_hours }} 小時
+          · {{ mode.users.count }} 人適用
+        </div>
+      </div>
+      <span class="badge-role">查看</span>
+    </div>
+  </div>
+  {% empty %}
+  <div style="font-size:0.82rem; color:#7a7a9a; padding:8px 0;">尚未設定任何上班模式</div>
+  {% endfor %}
+</div>
+
+<!-- 新增員工 -->
+<div class="mt-4">
+  <div style="font-size:0.78rem; color:#7a7a9a; font-weight:600; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+    新增員工
+  </div>
+  <div class="card-dark">
+    <form method="post" action="{% url 'agent_add_employee' %}">
+      {% csrf_token %}
+      <div class="mb-2">
+        <label class="form-label">姓名 *</label>
+        <input type="text" name="first_name" class="form-control" placeholder="例：小明" required>
+      </div>
+      <div class="d-flex gap-2 mb-2">
+        <div class="flex-fill">
+          <label class="form-label">員工編號</label>
+          <input type="text" name="employee_code" class="form-control" placeholder="例：S01">
+        </div>
+        <div class="flex-fill">
+          <label class="form-label">上班模式</label>
+          <select name="work_mode_id" class="form-control">
+            <option value="">不指定</option>
+            {% for mode in work_modes %}
+            <option value="{{ mode.id }}">{{ mode.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="d-flex gap-2 mb-3">
+        <div class="flex-fill">
+          <label class="form-label">登入帳號 *</label>
+          <input type="text" name="username" class="form-control" placeholder="用於登入的帳號" required>
+        </div>
+        <div class="flex-fill">
+          <label class="form-label">初始密碼 *</label>
+          <input type="password" name="password" class="form-control" placeholder="至少 8 字元" required>
+        </div>
+      </div>
+      <button type="submit" class="btn-accent" style="font-size:0.9rem; padding:12px;">
+        <i class="bi bi-person-plus me-2"></i>新增員工
+      </button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
