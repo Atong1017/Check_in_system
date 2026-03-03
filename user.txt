@@ -1,0 +1,5 @@
+超級管理員 superuser admin1234 最高管理者
+總公司老闆 boss password123 BOSS (Admin)
+店長 mami password123 Mami
+經紀人 agent password123 Agent
+員工 / 公關 staff password123 Staff
